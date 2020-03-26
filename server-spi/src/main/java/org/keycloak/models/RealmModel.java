@@ -345,6 +345,7 @@ public interface RealmModel extends RoleContainerModel {
     RequiredActionProviderModel getRequiredActionProviderByAlias(String alias);
 
     List<IdentityProviderModel> getIdentityProviders();
+    IdentityProviderModel getIdentityProviderById(String internalId);
     IdentityProviderModel getIdentityProviderByAlias(String alias);
     void addIdentityProvider(IdentityProviderModel identityProvider);
     void removeIdentityProviderByAlias(String alias);
@@ -508,5 +509,6 @@ public interface RealmModel extends RoleContainerModel {
     void addDefaultClientScope(ClientScopeModel clientScope, boolean defaultScope);
     void removeDefaultClientScope(ClientScopeModel clientScope);
     List<ClientScopeModel> getDefaultClientScopes(boolean defaultScope);
+
 
 }

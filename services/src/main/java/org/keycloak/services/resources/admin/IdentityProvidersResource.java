@@ -207,15 +207,11 @@ public class IdentityProvidersResource {
     @Path("instances/{alias}")
     public IdentityProviderResource getIdentityProvider(@PathParam("alias") String alias) {
         this.auth.realm().requireViewIdentityProviders();
-        IdentityProviderModel identityProviderModel = null;
 
-        for (IdentityProviderModel storedIdentityProvider : this.realm.getIdentityProviders()) {
-            if (storedIdentityProvider.getAlias().equals(alias)
-                    || storedIdentityProvider.getInternalId().equals(alias)) {
-                identityProviderModel = storedIdentityProvider;
-            }
-        }
-
+        IdentityProviderModel identityProviderModel = this.realm.getIdentityProviderByAlias(alias);
+        if(identityProviderModel == null)
+        	this.realm.getIdentityProviderById(alias);
+        
         IdentityProviderResource identityProviderResource = new IdentityProviderResource(this.auth, realm, session, identityProviderModel, adminEvent);
         ResteasyProviderFactory.getInstance().injectProperties(identityProviderResource);
         
