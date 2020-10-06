@@ -1503,6 +1503,12 @@
                 <version>${project.version}</version>
                 <type>zip</type>
             </dependency>
+            <!-- keycloak plugins -->
+            <dependency>
+           		<groupId>org.keycloak</groupId>
+				<artifactId>oidc-federation</artifactId>
+				<version>${project.version}</version>
+            </dependency>
             <!-- webauthn support -->
             <dependency>
                 <groupId>com.webauthn4j</groupId>
