@@ -42,6 +42,7 @@ import org.keycloak.protocol.oidc.OIDCWellKnownProvider;
 import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.protocol.oidc.federation.beans.EntityStatement;
 import org.keycloak.protocol.oidc.federation.beans.OIDCFederationConfigurationRepresentation;
+import org.keycloak.protocol.oidc.federation.beans.OPMetadata;
 import org.keycloak.protocol.oidc.federation.exceptions.InternalServerErrorException;
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
@@ -102,10 +103,13 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider imple
 //        config.setClientRegistrationTypesSupported(clientRegistrationTypesSupported);
 //        config.setClientRegistrationAuthnMethodsSupported(clientRegistrationAuthnMethodsSupported);
         
-        
+		OPMetadata metadata = new OPMetadata();
+		metadata.setMetadata(config);
+		
+		
         EntityStatement entityStatement = new EntityStatement();
         entityStatement.issuedFor(Urls.realmIssuer(frontendUriInfo.getBaseUri(), realm.getName()));
-        entityStatement.setMetadata(config);
+        entityStatement.setMetadata(metadata);
 //        entityStatement.setAuthorityHints(authorityHints);
         entityStatement.setJwks(getKeySet());
         entityStatement.issuer(Urls.realmIssuer(frontendUriInfo.getBaseUri(), realm.getName()));
