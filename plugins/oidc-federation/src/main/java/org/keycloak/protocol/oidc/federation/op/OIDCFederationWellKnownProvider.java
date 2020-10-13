@@ -18,13 +18,9 @@ package org.keycloak.protocol.oidc.federation.op;
 
 
 
-import org.keycloak.OAuth2Constants;
-import org.keycloak.authentication.ClientAuthenticator;
-import org.keycloak.authentication.ClientAuthenticatorFactory;
+import org.keycloak.TokenCategory;
 import org.keycloak.common.util.Time;
-import org.keycloak.crypto.CekManagementProvider;
-import org.keycloak.crypto.ClientSignatureVerifierProvider;
-import org.keycloak.crypto.ContentEncryptionProvider;
+import org.keycloak.crypto.HashProvider;
 import org.keycloak.crypto.KeyType;
 import org.keycloak.crypto.KeyUse;
 import org.keycloak.crypto.KeyWrapper;
@@ -32,48 +28,41 @@ import org.keycloak.crypto.SignatureProvider;
 import org.keycloak.jose.jwk.JSONWebKeySet;
 import org.keycloak.jose.jwk.JWK;
 import org.keycloak.jose.jwk.JWKBuilder;
-import org.keycloak.jose.jws.Algorithm;
-import org.keycloak.models.ClientScopeModel;
+import org.keycloak.jose.jws.crypto.HashUtils;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.protocol.oidc.OIDCWellKnownProvider;
-import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.protocol.oidc.federation.beans.EntityStatement;
 import org.keycloak.protocol.oidc.federation.beans.OIDCFederationConfigurationRepresentation;
 import org.keycloak.protocol.oidc.federation.beans.OPMetadata;
 import org.keycloak.protocol.oidc.federation.exceptions.InternalServerErrorException;
+import org.keycloak.protocol.oidc.federation.exceptions.NoAlgorithmException;
+import org.keycloak.protocol.oidc.federation.rest.OIDCFederationResourceProvider;
+import org.keycloak.protocol.oidc.federation.rest.OIDCFederationResourceProviderFactory;
+import org.keycloak.protocol.oidc.federation.rest.op.FederationOPService;
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
-import org.keycloak.protocol.oidc.utils.OIDCResponseType;
-import org.keycloak.provider.ProviderFactory;
-import org.keycloak.representations.IDToken;
 import org.keycloak.services.Urls;
-import org.keycloak.services.clientregistration.ClientRegistrationService;
-import org.keycloak.services.clientregistration.oidc.OIDCClientRegistrationProviderFactory;
 import org.keycloak.services.resources.RealmsResource;
 import org.keycloak.urls.UrlType;
-import org.keycloak.wellknown.WellKnownProvider;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.keycloak.util.JsonSerialization;
 
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
-import java.net.URI;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 
-public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider implements WellKnownProvider {
+public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider {
 
-	public static final ObjectMapper om = new ObjectMapper();
 	public static final Long ENTITY_EXPIRES_AFTER_SEC = 86400L; //24 hours
+	public static final List<String> CLIENT_REGISTRATION_TYPES_SUPPORTED = Arrays.asList("automatic", "explicit");
+	
 	
     private KeycloakSession session;
 
@@ -90,17 +79,20 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider imple
 
         RealmModel realm = session.getContext().getRealm();
 
+        UriBuilder frontendUriBuilder = RealmsResource.realmBaseUrl(frontendUriInfo);
+        UriBuilder backendUriBuilder = RealmsResource.realmBaseUrl(backendUriInfo);
+        
     	OIDCFederationConfigurationRepresentation config;
 		try {
 			config = from(((OIDCConfigurationRepresentation) super.getConfig()));
-		} catch (JsonProcessingException e) {
+		} catch (IOException e) {
 			throw new InternalServerErrorException("Could not form the configuration response");
 		} 
-
+		
         //additional federation-specific configuration
-//        config.setFederationRegistrationEndpoint(federationRegistrationEndpoint);
-//        config.setPushedAuthorizationRequestEndpoint(pushedAuthorizationRequestEndpoint);
-//        config.setClientRegistrationTypesSupported(clientRegistrationTypesSupported);
+        config.setFederationRegistrationEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "getFederationRegistration").build(realm.getName()).toString());
+        config.setPushedAuthorizationRequestEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "postPushedAuthorization").build(realm.getName()).toString());
+        config.setClientRegistrationTypesSupported(CLIENT_REGISTRATION_TYPES_SUPPORTED);
 //        config.setClientRegistrationAuthnMethodsSupported(clientRegistrationAuthnMethodsSupported);
         
 		OPMetadata metadata = new OPMetadata();
@@ -116,12 +108,14 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider imple
         entityStatement.issuedNow();
         entityStatement.exp(Long.valueOf(Time.currentTime()) + ENTITY_EXPIRES_AFTER_SEC);
         
+        try {
+        	System.out.println(JsonSerialization.writeValueAsString(entityStatement));
+        }catch(Exception ex) {}
+        	
+        //sign and encode entity statement
+        String encodedToken = session.tokens().encode(entityStatement);
         
-        
-        //sign entity statement
-        
-        
-        return entityStatement;
+        return encodedToken;
     }
 
     @Override
@@ -150,9 +144,31 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider imple
         return keySet;
     }
     
-	public static OIDCFederationConfigurationRepresentation from(OIDCConfigurationRepresentation representation) throws JsonMappingException, JsonProcessingException {
-		return om.readValue(om.writeValueAsString(representation), OIDCFederationConfigurationRepresentation.class);
-	}
+    public static OIDCFederationConfigurationRepresentation from(OIDCConfigurationRepresentation representation) throws IOException {
+    	return JsonSerialization.readValue(JsonSerialization.writeValueAsString(representation), OIDCFederationConfigurationRepresentation.class);
+    }
+
     
+//    private List<String> getAvailableAsymSigAlgTypes(){
+//    	return session.keys().getKeys(session.getContext().getRealm()).stream()
+//    			.filter(key -> key.getUse().equals(KeyUse.SIG) && key.getType().equals(KeyType.RSA))
+//    			.map(key -> key.getAlgorithm())
+//    			.collect(Collectors.toList());
+//    }
+//    
+//    
+//    
+//	private String generateOIDCHash(String input) throws NoAlgorithmException {
+//		String signatureAlgorithm = getAvailableAsymSigAlgTypes().stream().findFirst().orElseThrow(() -> new NoAlgorithmException("No available asymmetric key signing algorithm available for realm "+session.getContext().getRealm().getName()));
+//		
+//        SignatureProvider signatureProvider = session.getProvider(SignatureProvider.class, signatureAlgorithm);
+//        String hashAlgorithm = signatureProvider.signer().getHashAlgorithm();
+//        
+//        HashProvider hashProvider = session.getProvider(HashProvider.class, hashAlgorithm);
+//        byte[] hash = hashProvider.hash(input);
+//
+//        return HashUtils.encodeHashToOIDC(hash);
+//    }
+	
 	
 }

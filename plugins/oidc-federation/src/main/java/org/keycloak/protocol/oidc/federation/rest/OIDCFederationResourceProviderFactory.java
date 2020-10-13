@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.protocol.oidc.federation.op;
+package org.keycloak.protocol.oidc.federation.rest;
 
 import org.keycloak.Config.Scope;
 import org.keycloak.models.KeycloakSession;
@@ -23,9 +23,9 @@ import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.services.resource.RealmResourceProvider;
 import org.keycloak.services.resource.RealmResourceProviderFactory;
 
-public class ExampleRealmResourceProviderFactory implements RealmResourceProviderFactory {
+public class OIDCFederationResourceProviderFactory implements RealmResourceProviderFactory {
 
-    public static final String ID = "example1";
+    public static final String ID = "oidc-federation";
 
     @Override
     public String getId() {
@@ -34,7 +34,7 @@ public class ExampleRealmResourceProviderFactory implements RealmResourceProvide
 
     @Override
     public RealmResourceProvider create(KeycloakSession session) {
-        return new ExampleRealmResourceProvider(session);
+        return new OIDCFederationResourceProvider(session);
     }
 
     @Override

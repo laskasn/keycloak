@@ -1,18 +1,14 @@
 package org.keycloak.protocol.oidc.federation.beans;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class OIDCFederationConfigurationRepresentation extends OIDCConfigurationRepresentation {
-
+	
 	
     @JsonProperty("federation_registration_endpoint")
     private String federationRegistrationEndpoint;
@@ -26,6 +22,9 @@ public class OIDCFederationConfigurationRepresentation extends OIDCConfiguration
     @JsonProperty("client_registration_authn_methods_supported")
     private Map<String,List<String>> clientRegistrationAuthnMethodsSupported;
 
+    @JsonProperty("organization_name")
+    private String organizationName;
+    
     
     
 	public String getFederationRegistrationEndpoint() {
@@ -59,6 +58,14 @@ public class OIDCFederationConfigurationRepresentation extends OIDCConfiguration
 	public void setClientRegistrationAuthnMethodsSupported(
 			Map<String, List<String>> clientRegistrationAuthnMethodsSupported) {
 		this.clientRegistrationAuthnMethodsSupported = clientRegistrationAuthnMethodsSupported;
+	}
+
+	public String getOrganizationName() {
+		return organizationName;
+	}
+
+	public void setOrganizationName(String organizationName) {
+		this.organizationName = organizationName;
 	}
 	
 }

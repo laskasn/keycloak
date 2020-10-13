@@ -15,20 +15,20 @@
  * limitations under the License.
  */
 
-package org.keycloak.protocol.oidc.federation.op;
+package org.keycloak.protocol.oidc.federation.rest;
 
-import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 
+import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.protocol.oidc.federation.rest.op.FederationOPService;
 import org.keycloak.services.resource.RealmResourceProvider;
 
-public class ExampleRealmResourceProvider implements RealmResourceProvider {
+public class OIDCFederationResourceProvider implements RealmResourceProvider {
 
     private KeycloakSession session;
 
-    public ExampleRealmResourceProvider(KeycloakSession session) {
+    public OIDCFederationResourceProvider(KeycloakSession session) {
         this.session = session;
     }
 
@@ -40,28 +40,14 @@ public class ExampleRealmResourceProvider implements RealmResourceProvider {
     @Override
     public void close() {
     }
-
     
-    @GET
-    @Produces("text/plain; charset=utf-8")
-    public String get() {
-        String name = session.getContext().getRealm().getDisplayName();
-        if (name == null) {
-            name = session.getContext().getRealm().getName();
-        }
-        return "Hello " + name;
+    @Path("op")
+    public FederationOPService getFederationOPService() {
+        FederationOPService opService = new FederationOPService(session);
+        ResteasyProviderFactory.getInstance().injectProperties(opService);
+        return opService;
     }
     
-    @GET
-    @Path("alternative")
-    @Produces("text/plain; charset=utf-8")
-    public String getAlternative() {
-        String name = session.getContext().getRealm().getDisplayName();
-        if (name == null) {
-            name = session.getContext().getRealm().getName();
-        }
-        return "Hello " + name;
-    }
     
     
 }

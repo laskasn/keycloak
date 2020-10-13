@@ -2,6 +2,7 @@ package org.keycloak.protocol.oidc.federation.beans;
 
 import java.util.List;
 
+import org.keycloak.TokenCategory;
 import org.keycloak.jose.jwk.JSONWebKeySet;
 import org.keycloak.representations.JsonWebToken;
 
@@ -43,6 +44,10 @@ public class EntityStatement extends JsonWebToken {
 		this.metadata = metadata;
 	}
     
+    @Override
+    public TokenCategory getCategory() {
+        return TokenCategory.ACCESS; //treat it as an access token (use asymmetric crypto algorithms)
+    }
     
 	
 }
