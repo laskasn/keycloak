@@ -107,10 +107,6 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider {
         entityStatement.issuer(Urls.realmIssuer(frontendUriInfo.getBaseUri(), realm.getName()));
         entityStatement.issuedNow();
         entityStatement.exp(Long.valueOf(Time.currentTime()) + ENTITY_EXPIRES_AFTER_SEC);
-        
-        try {
-        	System.out.println(JsonSerialization.writeValueAsString(entityStatement));
-        }catch(Exception ex) {}
         	
         //sign and encode entity statement
         String encodedToken = session.tokens().encode(entityStatement);
