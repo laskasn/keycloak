@@ -18,27 +18,21 @@ package org.keycloak.protocol.oidc.federation.op;
 
 
 
-import org.keycloak.TokenCategory;
 import org.keycloak.common.util.Time;
-import org.keycloak.crypto.HashProvider;
 import org.keycloak.crypto.KeyType;
 import org.keycloak.crypto.KeyUse;
 import org.keycloak.crypto.KeyWrapper;
-import org.keycloak.crypto.SignatureProvider;
 import org.keycloak.jose.jwk.JSONWebKeySet;
 import org.keycloak.jose.jwk.JWK;
 import org.keycloak.jose.jwk.JWKBuilder;
-import org.keycloak.jose.jws.crypto.HashUtils;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
-import org.keycloak.protocol.oidc.OIDCLoginProtocol;
-import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.protocol.oidc.OIDCWellKnownProvider;
 import org.keycloak.protocol.oidc.federation.beans.EntityStatement;
 import org.keycloak.protocol.oidc.federation.beans.OIDCFederationConfigurationRepresentation;
 import org.keycloak.protocol.oidc.federation.beans.OPMetadata;
 import org.keycloak.protocol.oidc.federation.exceptions.InternalServerErrorException;
-import org.keycloak.protocol.oidc.federation.exceptions.NoAlgorithmException;
+import org.keycloak.protocol.oidc.federation.helpers.PropertiesLoader;
 import org.keycloak.protocol.oidc.federation.rest.OIDCFederationResourceProvider;
 import org.keycloak.protocol.oidc.federation.rest.OIDCFederationResourceProviderFactory;
 import org.keycloak.protocol.oidc.federation.rest.op.FederationOPService;
@@ -53,15 +47,26 @@ import javax.ws.rs.core.UriInfo;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 
 public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider {
 
-	public static final Long ENTITY_EXPIRES_AFTER_SEC = 86400L; //24 hours
-	public static final List<String> CLIENT_REGISTRATION_TYPES_SUPPORTED = Arrays.asList("automatic", "explicit");
+	private static final Long ENTITY_EXPIRES_AFTER_SEC = 86400L; //24 hours
+	private static final List<String> CLIENT_REGISTRATION_TYPES_SUPPORTED = Arrays.asList("automatic", "explicit");
+	private static Map<String, List<String>> CLIENT_REGISTRATION_AUTHN_METHODS_SUPPORTED;
+    private static List<String> authorityHints =  Arrays.asList((String)PropertiesLoader.getProperties().get("oidc_federation_op_authority_hints"));
+	
+	
+	//should change this in the future
+	static {
+		CLIENT_REGISTRATION_AUTHN_METHODS_SUPPORTED = new HashMap<String, List<String>>();
+		CLIENT_REGISTRATION_AUTHN_METHODS_SUPPORTED.put("ar", Arrays.asList("request_object"));
+		CLIENT_REGISTRATION_AUTHN_METHODS_SUPPORTED.put("par", Arrays.asList("private_key_jwt", "self_signed_tls_client_auth"));
+	}
 	
 	
     private KeycloakSession session;
@@ -90,10 +95,10 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider {
 		} 
 		
         //additional federation-specific configuration
-        config.setFederationRegistrationEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "getFederationRegistration").build(realm.getName()).toString());
-        config.setPushedAuthorizationRequestEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "postPushedAuthorization").build(realm.getName()).toString());
+        config.setFederationRegistrationEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "federationRegistration").build(realm.getName()).toString());
+        config.setPushedAuthorizationRequestEndpoint(backendUriBuilder.clone().path(OIDCFederationResourceProviderFactory.ID).path(OIDCFederationResourceProvider.class, "getFederationOPService").path(FederationOPService.class, "pushedAuthorization").build(realm.getName()).toString());
         config.setClientRegistrationTypesSupported(CLIENT_REGISTRATION_TYPES_SUPPORTED);
-//        config.setClientRegistrationAuthnMethodsSupported(clientRegistrationAuthnMethodsSupported);
+        config.setClientRegistrationAuthnMethodsSupported(CLIENT_REGISTRATION_AUTHN_METHODS_SUPPORTED);
         
 		OPMetadata metadata = new OPMetadata();
 		metadata.setMetadata(config);
@@ -102,7 +107,7 @@ public class OIDCFederationWellKnownProvider extends OIDCWellKnownProvider {
         EntityStatement entityStatement = new EntityStatement();
         entityStatement.issuedFor(Urls.realmIssuer(frontendUriInfo.getBaseUri(), realm.getName()));
         entityStatement.setMetadata(metadata);
-//        entityStatement.setAuthorityHints(authorityHints);
+        entityStatement.setAuthorityHints(authorityHints);
         entityStatement.setJwks(getKeySet());
         entityStatement.issuer(Urls.realmIssuer(frontendUriInfo.getBaseUri(), realm.getName()));
         entityStatement.issuedNow();
